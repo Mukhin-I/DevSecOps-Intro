@@ -61,9 +61,11 @@ Missing (maps to **Security Misconfiguration — A02:2025**):
 > Also observed: `Access-Control-Allow-Origin: *` (permissive CORS) and `X-Recruiting` / `Feature-Policy` headers that disclose framework/easter-egg info.
 
 ### Top 3 Risks Observed
-1. **Broken Access Control (A01:2025)** — Juice Shop exposes REST endpoints (product reviews, basket, feedback) without proper authorization and addresses objects via sequential numeric IDs (e.g. `/api/Products/<id>`). This enables IDOR and horizontal access to data and actions that should be restricted. It is the highest-impact class because it hands an attacker resources outside their privilege level.
-2. **Security Misconfiguration (A02:2025)** — The app ships without a Content-Security-Policy and without HSTS, and is served over plain HTTP, so there is no defence-in-depth against injected scripts and no enforced transport encryption. It also returns `Access-Control-Allow-Origin: *` (permissive CORS) and discloses its exact build via `/rest/admin/application-version`, aiding cross-origin abuse and fingerprinting.
-3. **Injection (A05:2025)** — The login flow is SQL-injectable: supplying `' OR 1=1--` in the email field bypasses authentication. Injection stays high-severity because it can compromise the entire data layer (auth bypass, data exfiltration).
+1. **Broken Access Control (A01:2025)** — Juice Shop provides REST endpoints for features such as product reviews, baskets, and feedback without sufficient authorization checks. Since objects are identified using predictable sequential IDs (for example, `/api/Products/<id>`), an attacker can exploit IDOR to access or perform actions on resources belonging to other users. This is the highest-impact category because it allows attackers to operate outside their intended privilege level.
+
+2. **Security Misconfiguration (A02:2025)** — The application is configured without a Content-Security-Policy or HSTS and is served over plain HTTP, leaving it without important defence-in-depth protections against script injection and insecure transport. In addition, it uses permissive CORS with `Access-Control-Allow-Origin: *` and exposes the exact application build through `/rest/admin/application-version`, which can assist cross-origin attacks and application fingerprinting.
+
+3. **Injection (A05:2025)** — The login mechanism is vulnerable to SQL injection. Entering `' OR 1=1--` in the email field can bypass authentication. Injection remains a high-severity issue because it can compromise the underlying database and potentially enable authentication bypass and data exfiltration.
 
 ---
 
