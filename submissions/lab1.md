@@ -88,8 +88,8 @@ Starred the course repo and `simple-container-com/api`, and followed the profess
 
 - Workflow file: `.github/workflows/lab1-smoke.yml`
 - Trigger: `pull_request` on main
-- Run URL (must be green): _to be filled after PR is opened_
-- Workflow run duration: 20s
+- Run URL (must be green): https://github.com/Mukhin-I/DevSecOps-Intro/actions/runs/34504022967
+- Workflow run duration: 22s
 - Curl response excerpt:
   ```
   Juice Shop healthy after 4s
