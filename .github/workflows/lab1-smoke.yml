@@ -16,15 +16,16 @@ jobs:
         ports:
           - 3000:3000
     steps:
-      - name: Wait for Juice Shop and verify health
+      - name: Wait for Juice Shop
         run: |
-          for i in $(seq 1 30); do
-            if curl --silent --fail http://localhost:3000/rest/admin/application-version >/dev/null; then
-              echo "Juice Shop healthy after $((i * 2))s"
-              curl -i http://localhost:3000/rest/admin/application-version | head -20
+          set -euo pipefail
+          for i in $(seq 1 60); do
+            if curl --silent --fail http://localhost:3000/rest/admin/application-version; then
+              echo
+              echo "ready after ${i}s"
               exit 0
             fi
-            sleep 2
+            sleep 1
           done
-          echo "Juice Shop did not become healthy within 60s"
+          echo "Juice Shop did not become ready within 60s" >&2
           exit 1
