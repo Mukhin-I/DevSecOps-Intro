@@ -86,7 +86,7 @@ Starred the course repo and `simple-container-com/api`, and followed the profess
 
 - Workflow file: `.github/workflows/lab1-smoke.yml`
 - Trigger: `pull_request` on main
-- Run URL (must be green): 
+- Run URL (must be green): _to be filled after PR is opened_
 - Workflow run duration: 20s
 - Curl response excerpt:
   ```
