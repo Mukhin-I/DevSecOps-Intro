@@ -5,33 +5,40 @@
 ### Git signing configuration
 
 #### Setting - Value
-- `gpg.format` - `ssh`
-- `user.signingkey` - `~/.ssh/id_ed25519.pub`
-- `commit.gpgsign` - `true`
-- `tag.gpgsign` - `true`
 
-Key: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJlFDDEGAKwwxlik66rHRo5+LQGhlrq8fd7XgwScr5pf i.muhin@innopolis@university`  
+* `gpg.format` - `ssh`
+
+* `user.signingkey` - `~/.ssh/id_ed25519.pub`
+
+* `commit.gpgsign` - `true`
+
+* `tag.gpgsign` - `true`
+
+Key: `ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIJlFDDEGAKwwxlik66rHRo5+LQGhlrq8fd7XgwScr5pf i.muhin@innopolis@university`
+
 Fingerprint: `SHA256:vWuQ1tf1aBKjQIK/FNvOMudQ7PKACM2eeV3FQ5iXZF4`
 
 ### git log --show-signature -1
 
 ```
 Good "git" signature for i.muhin@innopolis.university with ED25519 key SHA256:vWuQ1tf1aBKjQIK/FNvOMudQ7PKACM2eeV3FQ5iXZF4
+
 Author: Ilya Muhin <i.muhin@innopolis.university>
+
 Date:   Fri Sep 11 17:22:53 2026 +0300
 
-first signed commit
+test: signed commit
 ```
 
 ### GitHub Verified badge link
 
-*(link to commit on GitHub to be added after push)*
+https://github.com/Mukhin-I/DevSecOps-Intro/commit/3379c6c8d94e7c693ce33bf93473456ac2e0a3f3
 
 ### Repudiation and what the badge changes
 
-Without signed commits, anyone who has push access to a fork can author commits with any name and email they like — `git commit --author="Ilya Muhin <i.muhin@innopolis.university>"` is a single flag. In practice this means an attacker who compromises the repo can plant commits that look like they came from me, or I could deny authorship of something I actually wrote. Lab 2 called this repudiation: the inability to prove who did what.
+Without signed commits, anyone with permission to push to a fork can create commits using any name and email address. For example, `git commit --author="Ilya Muhin <i.muhin@innopolis.university>"` allows an attacker to make a commit appear as if it was authored by me. This also means that I could later deny responsibility for a commit that I actually created. This is the repudiation problem from Lab 2: there is no reliable proof of who performed an action.
 
-The Verified badge changes this because GitHub checks that the commit was signed with a key that is registered to the stated GitHub account. A forged author line produces an Unverified badge (or none at all), which is an immediate flag during code review. It does not make forgery impossible, but it raises the bar from "edit a text field" to "steal a private key".
+The Verified badge provides additional assurance because GitHub verifies that the commit was signed using a key associated with the claimed GitHub account. If someone simply changes the author information without possessing the corresponding private key, GitHub displays the commit as Unverified or without a verification badge, making the discrepancy visible during review. Signing does not completely prevent forgery, but it changes the attack from modifying an author field to obtaining the author's private key.
 
 ---
 
@@ -41,68 +48,90 @@ The Verified badge changes this because GitHub checks that the commit was signed
 
 ```yaml
 repos:
+
   - repo: local
+
     hooks:
+
       - id: gitleaks
+
         name: gitleaks
+
         description: Detect hardcoded secrets using gitleaks
+
         entry: gitleaks git --pre-commit --redact --staged
+
         language: system
+
         pass_filenames: false
 
   - repo: https://github.com/pre-commit/pre-commit-hooks
+
     rev: v5.0.0
+
     hooks:
+
       - id: detect-private-key
+
       - id: check-added-large-files
+
         args: ["--maxkb=500"]
 ```
 
-Note: gitleaks 8.30.1 is installed via brew. The `local` + `language: system` hook calls the system binary directly, avoiding the Go build step that times out in this environment. The hook behaviour and rule set are identical to using the upstream `github.com/gitleaks/gitleaks` repo at `v8.30.1`.
+Note: gitleaks 8.30.1 is installed through brew. The `local` repository with `language: system` invokes the system-installed binary directly, which avoids the Go build process that times out in this environment. Its hook behaviour and detection rules are the same as those provided by the upstream `github.com/gitleaks/gitleaks` repository at `v8.30.1`.
 
 ### Blocked commit output
 
-Attempting to stage and commit `GH_PAT=ghp_16C7e42F292c6912E7710c838347Ae178B4a`:
+Trying to stage and commit `GH_PAT=ghp_16C7e42F292c6912E7710c838347Ae178B4a` produced:
 
 ```
 Finding:     GH_PAT=REDACTED
+
 Secret:      REDACTED
+
 RuleID:      github-pat
+
 Entropy:     4.143943
+
 File:        leak-attempt.txt
+
 Line:        1
+
 Fingerprint: leak-attempt.txt:github-pat:1
 
 leaks found: 1
 ```
 
-Exit code 1 — commit blocked. `git log --oneline -1` still shows the previous commit, not the blocked one.
+Exit code 1 — the commit was rejected. `git log --oneline -1` still points to the previous commit rather than the blocked one.
 
 ### Allowlist options for `AKIA...` documentation examples
 
-**Option 1 — `[allowlist]` entry in `.gitleaks.toml`**
+**Option 1 — Path exclusion for `docs/`**
 
-An allowlist entry uses a regex to exempt specific patterns everywhere in the repo, regardless of which file they appear in. For example:
-
-```toml
-[allowlist]
-  regexes = ['''AKIAIOSFODNN7EXAMPLE''']
-```
-
-This stops being safe the moment a real key happens to share a prefix or partial match with the pattern, or when a developer copies the "example" string pattern into production config by accident and it silently passes. It's also repo-wide — if the same key format appears legitimately in a secrets file, the allowlist would suppress that detection too.
-
-**Option 2 — Path exclusion for `docs/`**
-
-A path exclusion tells gitleaks to skip files under a given path entirely:
+A path exclusion makes gitleaks ignore all files located under a specified directory:
 
 ```toml
 [allowlist]
+
   paths = ['''docs/''']
 ```
 
-This stops being safe as soon as someone puts a real credential into a file under `docs/` (easy to do by mistake when writing a tutorial with live examples), or when the docs directory is served publicly and a search engine indexes the key. Path exclusions are also a footgun for nested paths — `docs/config/secrets.yaml` would be silently ignored.
+This becomes dangerous if an actual credential is accidentally placed somewhere inside `docs/`, for example while creating documentation containing live configuration values. It is also risky if the documentation is publicly served and the credential becomes searchable. Nested paths such as `docs/config/secrets.yaml` would likewise be skipped without any warning.
 
-In both cases, the right long-term answer is to use placeholder values that look nothing like real credentials (e.g., `AKIAXXXXXXXXXXXXXXXX`) and add them to the gitleaks `allowlist` by exact string, not by pattern.
+**Option 2 — `[allowlist]` entry in `.gitleaks.toml`**
+
+An allowlist entry can use a regular expression to exclude matching values from detection throughout the entire repository. For example:
+
+```toml
+[allowlist]
+
+  regexes = ['''AKIAIOSFODNN7EXAMPLE''']
+```
+
+This approach becomes risky if a real credential happens to match the same prefix or partial pattern, or if a developer accidentally copies the example into a production configuration and it is then ignored by gitleaks. Because the rule applies repository-wide, the same credential format could also be missed in files where it should be detected.
+
+
+For both approaches, the safer long-term solution is to use placeholder values that clearly cannot be mistaken for real credentials, such as `AKIAXXXXXXXXXXXXXXXX`, and allowlist the exact placeholder string rather than a broader pattern.
 
 ---
 
@@ -112,8 +141,11 @@ In both cases, the right long-term answer is to use placeholder values that look
 
 ```
 be996e5 docs: usage notes
+
 02d5803 feat: empty log
+
 6c73627 feat: add config
+
 e91b46d init
 ```
 
@@ -123,34 +155,42 @@ e91b46d init
 
 ```
 Aborting: Refusing to destructively overwrite repo history since
+
 this does not look like a fresh clone.
+
   (expected at most one entry in the reflog for HEAD)
+
 Please operate on a fresh clone instead.  If you want to proceed
+
 anyway, use --force.
 ```
 
-The sandbox repo was initialised with `git init` and four local commits, so the reflog already had multiple entries. `git filter-repo` treats any repo with a non-trivial reflog as "not a fresh clone" and refuses by default to avoid accidentally destroying real history. The fix is `--force`, which is explicitly documented for throwaway repos.
+The sandbox repository was created with `git init` and already contained four local commits, meaning its reflog had multiple entries. By default, `git filter-repo` considers a repository with a non-trivial reflog to be unsuitable for destructive rewriting and stops to prevent accidental history loss. Since this was a throwaway repository, the appropriate solution was to use `--force`, which is explicitly provided for such cases.
 
 ### git log after rewrite
 
 ```
 c54ad5c docs: usage notes
+
 e20d9ff feat: empty log
+
 32273a0 feat: add config
-066d02f init
+
+066d02 init
 ```
 
-All commit hashes changed because filter-repo rewrites the entire history. The commit messages are the same, but the blobs (and therefore the tree SHA) changed wherever the secret was replaced.
+All commit hashes changed because `filter-repo` reconstructs the entire history. Although the commit messages remain unchanged, the affected blobs and consequently the tree SHA values changed where the secret was replaced.
 
-`git log -p | grep -c 'ghp_AAAA'` → **0**  
+`git log -p | grep -c 'ghp_AAAA'` → **0**
+
 `git log -p | grep -c 'REDACTED'` → **2**
 
 ### Rewriting history is not enough
 
-The rewrite only fixes the local and remote copies of the repository going forward. The step that actually ends the incident is **rotating the credential** — revoking the exposed key and issuing a new one. Anyone who cloned, forked, or cached the repository before the rewrite still has the original history with the plaintext secret. GitHub caches repository data, CI runners may have shallow clones, and Google may have indexed the diff. The secret is still valid and exploitable until it is revoked, regardless of how clean the git history looks.
+Rewriting the repository only cleans the local and remote history from that point forward. The actual incident response must also include **rotating the credential** — revoking the exposed key and generating a replacement. Anyone who cloned or forked the repository, or otherwise cached it before the rewrite, may still possess the original history containing the plaintext secret. GitHub may retain cached repository data, CI runners can have shallow clones, and search engines may have indexed the previous diff. Therefore, the credential remains usable until it is revoked, regardless of whether the current Git history appears clean.
 
 ### Two things that surprised me
 
-First, all four commit hashes changed even for the "init" commit that contained no secret at all. I expected filter-repo to only rewrite commits that touched the files with the replacement, but it rewrites every descendant commit too because each commit's SHA includes its parent's SHA — once one commit changes, all subsequent ones must change as well.
+First, all four commit hashes changed, including the `init` commit that did not contain the secret. I initially expected `filter-repo` to modify only commits affecting the files where the replacement occurred. However, every descendant commit also receives a new hash because each commit SHA incorporates the SHA of its parent. Once an earlier commit changes, all following commits must therefore be recalculated.
 
-Second, filter-repo silently removed the `origin` remote after running. The tool drops all remote-tracking references as a safety measure so you can't accidentally push the rewritten history to the wrong place. In a real cleanup you'd need to re-add the remote explicitly before doing the force-push.
+Second, `filter-repo` removed the `origin` remote after the rewrite without prompting. This is a safety mechanism that removes remote-tracking references so the rewritten history cannot accidentally be pushed to an unintended repository. In an actual cleanup process, the remote would have to be added again explicitly before performing the force-push.
